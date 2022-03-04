@@ -25,6 +25,7 @@ redBright = Fore.RED + Style.BRIGHT
 resetStyle = Style.RESET_ALL
 
 def main():
+    # Setup web3
     w3 = pickChainAndSetProvider()
     w3.eth.set_gas_price_strategy(rpc_gas_price_strategy)
     # w3.middleware_onion.inject(geth_poa_middleware, layer=0)
@@ -37,7 +38,7 @@ def main():
 
     # Check if provided address is a valid address
     if not w3.isAddress(SENDER_ADDRESS):
-        print(redBright + "*==================* @ WRONG WALLET ADDRESS @ *==================*")
+        print(redBright + "*==================* !!! WRONG WALLET ADDRESS !!! *==================*")
         return 1
     
     balance = w3.eth.get_balance(SENDER_ADDRESS)
@@ -83,7 +84,7 @@ def pancakeswapCreateTransaction(w3, token_to_buy, amountInWei, slippage):
     deadline = int(time.time()) + 1500
 
     # Seems to be okay but im not usre if it's the best way to find gasLimit and gasPrice
-    gasLimit = contract.functions.swapExactETHForTokens(
+    pcsFun = contract.functions.swapExactETHForTokens(
         # Amount Out Min
         amountOutMin,
         # Path,
@@ -92,16 +93,36 @@ def pancakeswapCreateTransaction(w3, token_to_buy, amountInWei, slippage):
         SENDER_ADDRESS,
         # Deadline
         deadline
-    ).estimateGas({'value': amountInWei})
-    print("GAS LIMIT:", gasLimit)
-    # .buildTransaction({
-    #     'from': SENDER_ADDRESS,
-    #     'value': w3.toWei(amountInInput, 'ether'),
-    gasPrice = w3.fromWei(w3.eth.generate_gas_price(), 'gwei')
-    # })
-    # console.log(pcs_txn)
-    # return pcs_txn
+    )
+    changeGasPrice(pcsFun, amountInWei, w3)
+    
+    
+def changeGasPrice(txnFun, amountInWei, w3):
+    """Dispaly user current gasPrice and gasLimit and ask if they want to pay approximate fees"""
+    # Get gasLimit
+    gasLimit = txnFun.estimateGas({'value': amountInWei})
+    print("\n|===|GAS LIMIT:", blueBright, gasLimit, resetStyle)
+    
+    # Get gasPrice using rpc_gas_price_strategy
+    gasPrice = w3.eth.generate_gas_price()
+    print("|===|GAS PRICE:", blueBright, w3.fromWei(gasPrice, 'gwei'), "Gwei", resetStyle)
+    
+    askForGasPrice = 'n'
+    while askForGasPrice != 'y':
+        print("\n|=============|")
+        # Show approximate fees using current gasPrice
+        print("|===|Approximate fees:", redBright, w3.fromWei(gasLimit*gasPrice, 'ether'), resetStyle, 'ether')
 
+        # Ask if user wants to use this gasPrice considering approximate fees
+        askForGasPrice = input("|===|Accept gas price?(y/n): ").lower()
+
+        # If user doesn't agree prompt them for appropriate gasPrice
+        if askForGasPrice == "n":
+            gasPrice = input("|===|YOUR GAS PRICE (gwei): ")
+            gasPrice = w3.toWei(gasPrice, 'gwei')
+
+
+        
 
 def setSlippage():
     """Set slippage"""
