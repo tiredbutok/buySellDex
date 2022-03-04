@@ -19,6 +19,8 @@ from web3.middleware import geth_poa_middleware
 from web3.gas_strategies.rpc import rpc_gas_price_strategy
 from config import *
 
+yelloBright = Fore.YELLOW + Style.BRIGHT
+brightCyan = Fore.CYAN + Style.BRIGHT
 blueBright = Fore.BLUE + Style.BRIGHT
 greenBright = Fore.GREEN + Style.BRIGHT
 redBright = Fore.RED + Style.BRIGHT
@@ -64,16 +66,34 @@ def main():
     nonce = w3.eth.get_transaction_count(SENDER_ADDRESS)
 
     # Get transaction
-    transaction = pancakeswapCreateTransaction(w3, token_to_buy, amountInWei, slippage)
+    transaction = pancakeswapCreateTransaction(w3, token_to_buy, amountInWei, slippage, nonce)
+    
+    # Get gasLimit and gasPrice in array
+    gas_result = changeGasPrice(transaction, amountInWei, w3)
+    
+    # Build transaction
+    readyTransaction = transaction.buildTransaction({
+        "from": SENDER_ADDRESS,
+        "value": amountInWei,
+        "gas": gas_result[0],
+        "gasPrice": gas_result[1],
+        "nonce": nonce
+    })
 
+    # print(readyTransaction)
+    # Sign transaction
+    signed_txn = w3.eth.account.sign_transaction(readyTransaction, private_key=PRIVATE_KEY)
+    txn_send = w3.eth.send_raw_transaction(signed_txn.rawTransaction)
+    tx_hash = w3.toHex(txn_send)
+    print("https://bscscan.com/tx/" + tx_hash)
 
 def pickChainAndSetProvider():
     """Returns web3 provider based on provided chain"""
-
+    print()
     web3 = Web3(Web3.HTTPProvider(BSC["RPC"]))
     return web3
 
-def pancakeswapCreateTransaction(w3, token_to_buy, amountInWei, slippage):
+def pancakeswapCreateTransaction(w3, token_to_buy, amountInWei, slippage, nonce):
     """Returns tx for pancakeswap"""
     wbnb_ca = w3.toChecksumAddress(BSC["WRAPPED_NATIVE_TOKEN_CA"])
     contract = w3.eth.contract(address=BSC["ROUTER_CA"], abi=BSC["ROUTER_CA_ABI"])
@@ -83,8 +103,8 @@ def pancakeswapCreateTransaction(w3, token_to_buy, amountInWei, slippage):
     # Set dedline to 25 minutes
     deadline = int(time.time()) + 1500
 
-    # Seems to be okay but im not usre if it's the best way to find gasLimit and gasPrice
-    pcsFun = contract.functions.swapExactETHForTokens(
+    # Seems to be okay but im not sure if it's the best way to find gasLimit and gasPrice
+    pcsTxn = contract.functions.swapExactETHForTokens(
         # Amount Out Min
         amountOutMin,
         # Path,
@@ -94,14 +114,14 @@ def pancakeswapCreateTransaction(w3, token_to_buy, amountInWei, slippage):
         # Deadline
         deadline
     )
-    gas_result = changeGasPrice(pcsFun, amountInWei, w3)
-    print(gas_result)
+    
+    return pcsTxn
     
     
-def changeGasPrice(txnFun, amountInWei, w3):
+def changeGasPrice(txn, amountInWei, w3):
     """Dispaly user current gasPrice and gasLimit and ask if they want to pay approximate fees"""
     # Get gasLimit
-    gasLimit = txnFun.estimateGas({'value': amountInWei})
+    gasLimit = txn.estimateGas({'value': amountInWei})
     print("\n|===|GAS LIMIT:", blueBright, gasLimit, resetStyle)
     
     # Get gasPrice using rpc_gas_price_strategy
