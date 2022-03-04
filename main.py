@@ -94,7 +94,8 @@ def pancakeswapCreateTransaction(w3, token_to_buy, amountInWei, slippage):
         # Deadline
         deadline
     )
-    changeGasPrice(pcsFun, amountInWei, w3)
+    gas_result = changeGasPrice(pcsFun, amountInWei, w3)
+    print(gas_result)
     
     
 def changeGasPrice(txnFun, amountInWei, w3):
@@ -121,7 +122,7 @@ def changeGasPrice(txnFun, amountInWei, w3):
             gasPrice = input("|===|YOUR GAS PRICE (gwei): ")
             gasPrice = w3.toWei(gasPrice, 'gwei')
 
-
+    return [gasLimit, gasPrice]
         
 
 def setSlippage():
