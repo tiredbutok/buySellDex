@@ -1,11 +1,12 @@
 import time
+import sys
 
-#For coloring of terminal output
+# For coloring of terminal output
 from colorama import init
 from colorama import Fore, Back, Style
 init()
 
-#For loading env variables
+# For loading env variables
 import os
 from dotenv import load_dotenv
 
@@ -13,42 +14,48 @@ load_dotenv()
 PRIVATE_KEY = os.getenv('PRIVATE_KEY')
 SENDER_ADDRESS = os.getenv('SENDER_ADDRESS')
 
-#For web3
+# For web3
 from web3 import Web3
 from web3.middleware import geth_poa_middleware
 from web3.gas_strategies.rpc import rpc_gas_price_strategy
 from config import *
 
+# Text styling
 yelloBright = Fore.YELLOW + Style.BRIGHT
-brightCyan = Fore.CYAN + Style.BRIGHT
+cyanBright = Fore.CYAN + Style.BRIGHT
 blueBright = Fore.BLUE + Style.BRIGHT
 greenBright = Fore.GREEN + Style.BRIGHT
 redBright = Fore.RED + Style.BRIGHT
 resetStyle = Style.RESET_ALL
 
+native_token_symbol = ''
+
 def main():
+    # Get chain info
+    chain = pickChain()
+
     # Setup web3
-    w3 = pickChainAndSetProvider()
+    w3 = Web3(Web3.HTTPProvider(chain["RPC"]))
     w3.eth.set_gas_price_strategy(rpc_gas_price_strategy)
-    # w3.middleware_onion.inject(geth_poa_middleware, layer=0)
+
     if w3.isConnected():
         print(greenBright, "\n|IS CONNECTED|:", 'True', resetStyle)
     else:
         print(redBright, "\n|IS CONNECTED|:", 'Fales', resetStyle)
-        return 1
+        sys.exit(1)
 
 
     # Check if provided address is a valid address
     if not w3.isAddress(SENDER_ADDRESS):
         print(redBright + "*==================* !!! WRONG WALLET ADDRESS !!! *==================*")
-        return 1
+        sys.exit(1)
     
     balance = w3.eth.get_balance(SENDER_ADDRESS)
     readable_balance = w3.fromWei(balance, 'ether')
     print(greenBright, "BALANCE:", str(readable_balance), resetStyle, "\n")
 
-    # Set amount of BNB for txn
-    amountInMessage = f"{blueBright}Amount of BNB in: {resetStyle}"
+    # Set amount of native token for txn
+    amountInMessage = f"{blueBright}Amount of {native_token_symbol} in: {resetStyle}"
     amountInInput = input(amountInMessage)
     amountInWei = w3.toWei(amountInInput, 'ether')
 
@@ -66,7 +73,7 @@ def main():
     nonce = w3.eth.get_transaction_count(SENDER_ADDRESS)
 
     # Get transaction
-    transaction = pancakeswapCreateTransaction(w3, token_to_buy, amountInWei, slippage, nonce)
+    transaction = createTransaction(w3, token_to_buy, amountInWei, slippage, nonce, chain)
     
     # Get gasLimit and gasPrice in array
     gas_result = changeGasPrice(transaction, amountInWei, w3)
@@ -85,37 +92,49 @@ def main():
     signed_txn = w3.eth.account.sign_transaction(readyTransaction, private_key=PRIVATE_KEY)
     txn_send = w3.eth.send_raw_transaction(signed_txn.rawTransaction)
     tx_hash = w3.toHex(txn_send)
-    print("https://bscscan.com/tx/" + tx_hash)
+    print(f"{chain['SCAN_URL']}{tx_hash}")
 
-def pickChainAndSetProvider():
-    """Returns web3 provider based on provided chain"""
-    print()
-    web3 = Web3(Web3.HTTPProvider(BSC["RPC"]))
-    return web3
+def pickChain():
+    """Return chain object that consists of NATIVE_TOKEN_SYMBOL, WRAPPED_NATIVE_TOKEN_CA, RPC etc."""
+    global native_token_symbol
+    try:
+        chainSymbol = sys.argv[1].lower()
+        chain = chains[chainSymbol]
+    except (IndexError, KeyError) as e:
+        print("ERROR:")
+        print(f"{cyanBright}{' ':6}|=====|Usage|=====|{resetStyle}")
+        print("-------------------------------")
+        print(f"python3 main.py {yelloBright}<chain_symbol>{resetStyle}")
+        print(f"{yelloBright}<chain_symbol>{resetStyle}: bsc, ftm, avax")
+        print("-------------------------------")
+        sys.exit(1)
+    print(f"{redBright}PICKED CHAIN:{resetStyle} {chainSymbol}")
+    native_token_symbol = chain["NATIVE_TOKEN_SYMBOL"]
+    return chain
 
-def pancakeswapCreateTransaction(w3, token_to_buy, amountInWei, slippage, nonce):
+def createTransaction(w3, token_to_buy, amountInWei, slippage, nonce, chain):
     """Returns tx for pancakeswap"""
-    wbnb_ca = w3.toChecksumAddress(BSC["WRAPPED_NATIVE_TOKEN_CA"])
-    contract = w3.eth.contract(address=BSC["ROUTER_CA"], abi=BSC["ROUTER_CA_ABI"])
+    native_token_ca = w3.toChecksumAddress(chain["WRAPPED_NATIVE_TOKEN_CA"])
+    contract = w3.eth.contract(address=chain["ROUTER_CA"], abi=chain["ROUTER_CA_ABI"])
     
-    amountOutMin = calculateMinAmountOfTokens(slippage, contract, w3, wbnb_ca, token_to_buy, amountInWei)
+    amountOutMin = calculateMinAmountOfTokens(slippage, contract, w3, native_token_ca, token_to_buy, amountInWei)
     
     # Set dedline to 25 minutes
     deadline = int(time.time()) + 1500
 
     # Seems to be okay but im not sure if it's the best way to find gasLimit and gasPrice
-    pcsTxn = contract.functions.swapExactETHForTokens(
+    txn = contract.functions.swapExactETHForTokensSupportingFeeOnTransferTokens(
         # Amount Out Min
         amountOutMin,
         # Path,
-        [wbnb_ca, token_to_buy],
+        [native_token_ca, token_to_buy],
         # To
         SENDER_ADDRESS,
         # Deadline
         deadline
     )
     
-    return pcsTxn
+    return txn
     
     
 def changeGasPrice(txn, amountInWei, w3):
@@ -132,7 +151,7 @@ def changeGasPrice(txn, amountInWei, w3):
     while askForGasPrice != 'y':
         print("\n|=============|")
         # Show approximate fees using current gasPrice
-        print("|===|Approximate fees:", redBright, w3.fromWei(gasLimit*gasPrice, 'ether'), resetStyle, 'ether')
+        print("|===|Approximate fees:", redBright, w3.fromWei(gasLimit*gasPrice, 'ether'), resetStyle, native_token_symbol)
 
         # Ask if user wants to use this gasPrice considering approximate fees
         askForGasPrice = input("|===|Accept gas price?(y/n): ").lower()
@@ -156,10 +175,10 @@ def setSlippage():
     print(f"{redBright}\n|=========| Slippage set to {slippageInput*100}%! |=========|{resetStyle}\n")
     return slippageInput
     
-def calculateMinAmountOfTokens(slippage, contract, w3, wbnb_ca, token_to_buy, amountInWei):
+def calculateMinAmountOfTokens(slippage, contract, w3, native_token_ca, token_to_buy, amountInWei):
     
     # Figure out amount of tokens
-    amountsOut = contract.functions.getAmountsOut(amountInWei, [wbnb_ca, token_to_buy]).call()
+    amountsOut = contract.functions.getAmountsOut(amountInWei, [native_token_ca, token_to_buy]).call()
     amountOfTokenOutEther = w3.fromWei(amountsOut[1], 'ether')
 
     amountOutMin = int(amountsOut[1] - (amountsOut[1] * slippage))
@@ -172,4 +191,5 @@ def calculateMinAmountOfTokens(slippage, contract, w3, wbnb_ca, token_to_buy, am
 # print("GAS PRICE:", w3.eth.generate_gas_price())
 # print(os.environ['PRIVETE_KEY'])
 
-main()
+if __name__ == '__main__':
+    main()
