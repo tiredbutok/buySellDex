@@ -94,6 +94,7 @@ def main():
     tx_hash = w3.toHex(txn_send)
     print(f"{chain['SCAN_URL']}{tx_hash}")
 
+
 def pickChain():
     """Return chain object that consists of NATIVE_TOKEN_SYMBOL, WRAPPED_NATIVE_TOKEN_CA, RPC etc."""
     global native_token_symbol
@@ -117,7 +118,15 @@ def createTransaction(w3, token_to_buy, amountInWei, slippage, nonce, chain):
     native_token_ca = w3.toChecksumAddress(chain["WRAPPED_NATIVE_TOKEN_CA"])
     contract = w3.eth.contract(address=chain["ROUTER_CA"], abi=chain["ROUTER_CA_ABI"])
     
-    amountOutMin = calculateMinAmountOfTokens(slippage, contract, w3, native_token_ca, token_to_buy, amountInWei)
+    loop = True
+    while loop:
+        # Rn have no other idea how to listen for liquidity added event
+        time.sleep(0.25)
+        try:
+            amountOutMin = calculateMinAmountOfTokens(slippage, contract, w3, native_token_ca, token_to_buy, amountInWei)
+            loop = False
+        except:
+            print("Waiting for liquidity.")
     
     # Set dedline to 25 minutes
     deadline = int(time.time()) + 1500
