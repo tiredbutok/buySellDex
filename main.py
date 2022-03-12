@@ -1,6 +1,8 @@
 import time
 import sys
 
+from txnClass import Txn
+
 # For coloring of terminal output
 from colorama import init
 from colorama import Fore, Back, Style
