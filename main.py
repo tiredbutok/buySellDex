@@ -18,7 +18,7 @@ SENDER_ADDRESS = os.getenv('SENDER_ADDRESS')
 from web3 import Web3
 from web3.middleware import geth_poa_middleware
 from web3.gas_strategies.rpc import rpc_gas_price_strategy
-from config import *
+from config import chains
 
 # Text styling
 yelloBright = Fore.YELLOW + Style.BRIGHT
@@ -30,7 +30,7 @@ resetStyle = Style.RESET_ALL
 
 native_token_symbol = ''
 
-def main():
+def main():        
     # Get chain info
     chain = pickChain()
 
@@ -43,6 +43,14 @@ def main():
     else:
         print(redBright, "\n|IS CONNECTED|:", 'Fales', resetStyle)
         sys.exit(1)
+
+    # Check if user wants to use -f (fast) option
+    # It allows to define gasPrice at the beginning making process faster
+    opts = [opt for opt in sys.argv[1:] if opt.startswith("-")]
+    fastGasPrice = None
+    if "-f" in opts:
+        fastGasPrice = input("|===|YOUR GAS PRICE (gwei): ")
+        fastGasPrice = w3.toWei(fastGasPrice, 'gwei')
 
 
     # Check if provided address is a valid address
@@ -76,7 +84,7 @@ def main():
     transaction = createTransaction(w3, token_to_buy, amountInWei, slippage, nonce, chain)
     
     # Get gasLimit and gasPrice in array
-    gas_result = changeGasPrice(transaction, amountInWei, w3)
+    gas_result = changeGasPrice(transaction, amountInWei, w3, fastGasPrice)
     
     # Build transaction
     readyTransaction = transaction.buildTransaction({
@@ -106,7 +114,7 @@ def pickChain():
         print(f"{cyanBright}{' ':6}|=====|Usage|=====|{resetStyle}")
         print("-------------------------------")
         print(f"python3 main.py {yelloBright}<chain_symbol>{resetStyle}")
-        print(f"{yelloBright}<chain_symbol>{resetStyle}: bsc, ftm, avax")
+        print(f"{yelloBright}<chain_symbol>{resetStyle}: bsc, ftm, ropsten")
         print("-------------------------------")
         sys.exit(1)
     print(f"{redBright}PICKED CHAIN:{resetStyle} {chainSymbol}")
@@ -126,7 +134,8 @@ def createTransaction(w3, token_to_buy, amountInWei, slippage, nonce, chain):
             amountOutMin = calculateMinAmountOfTokens(slippage, contract, w3, native_token_ca, token_to_buy, amountInWei)
             loop = False
         except:
-            print("Waiting for liquidity.")
+            a = time.strftime("%H:%M:%S", time.localtime())
+            print(f"{a} Waiting for liquidity.")
     
     # Set dedline to 25 minutes
     deadline = int(time.time()) + 1500
@@ -142,16 +151,22 @@ def createTransaction(w3, token_to_buy, amountInWei, slippage, nonce, chain):
         # Deadline
         deadline
     )
-    
+    print("TRANSACTION:", txn)
     return txn
     
     
-def changeGasPrice(txn, amountInWei, w3):
+def changeGasPrice(txn, amountInWei, w3, fastGasPrice=None):
     """Dispaly user current gasPrice and gasLimit and ask if they want to pay approximate fees"""
     # Get gasLimit
     gasLimit = txn.estimateGas({'value': amountInWei})
     print("\n|===|GAS LIMIT:", blueBright, gasLimit, resetStyle)
     
+    if fastGasPrice:
+        print("INSIDE FAST GAS CODE BLOCK")
+        gasPrice = fastGasPrice
+        print("|===|Approximate fees:", redBright, w3.fromWei(gasLimit*gasPrice, 'ether'), resetStyle, native_token_symbol)
+        return [gasLimit, gasPrice]
+
     # Get gasPrice using rpc_gas_price_strategy
     gasPrice = w3.eth.generate_gas_price()
     print("|===|GAS PRICE:", blueBright, w3.fromWei(gasPrice, 'gwei'), "Gwei", resetStyle)
