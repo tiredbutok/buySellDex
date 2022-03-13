@@ -2,7 +2,9 @@ import time
 from terminalTextStyling import *
 
 class Txn:
-    def __init__(self, chain, w3, amountInWei, contract, token_to_buy, native_token_ca, slippage, sender_address, fastGasPrice=None):
+    def __init__(self, chain, w3, amountInWei, contract, token_to_buy,
+            native_token_ca,slippage, sender_address, fastGasPrice=None):
+            
         self.chain = chain
         self.w3 = w3
         self.amountInWei = amountInWei
@@ -15,23 +17,29 @@ class Txn:
         
         self.txn = None
         self.createTransaction()
-        
-        self._gasLimit = self.txn.estimateGas({'value': self.amountInWei})
+        while True:
+            time.sleep(0.15)
+            try:
+                self._gasLimit = self.txn.estimateGas({'value': self.amountInWei})
+                break
+            except:
+                # ContractLogicError
+                print(f"{yelloBright}|Trying to get _gasLimit|{resetStyle}")
         # Get gasPrice (using rpc_gas_price_strategy)
         self._gasPrice = self.w3.eth.generate_gas_price()
         self.setUpGasPrice()
 
-    # def __str__ (self):
-        # return f"{}"
+    def __str__ (self):
+        return f"TxnObject: {self.chain['name']}, token_to_buy:{self.token_to_buy}, \
+            sender_address:{self.sender_address}"
 
     def createTransaction(self):
-        loop = True
-        while loop:
+        while True:
             # Rn have no idea how to listen for liquidity added event usint web3 py
             time.sleep(0.25)
             try:
                 amountOutMin = self.calculateMinAmountOfTokens()
-                loop = False
+                break
             except:
                 a = time.strftime("%H:%M:%S", time.localtime())
                 print(f"{a} Waiting for liquidity.")
@@ -53,14 +61,31 @@ class Txn:
     def calculateMinAmountOfTokens(self):    
         # Figure out amount of tokens
         amountsOut = self.contract.functions.getAmountsOut(self.amountInWei, [self.native_token_ca, self.token_to_buy]).call()
+            
         amountOfTokenOutEther = self.w3.fromWei(amountsOut[1], 'ether')
-
         amountOutMin = int(amountsOut[1] - (amountsOut[1] * self.slippage))
 
         print(f"{blueBright}Amount of tokens out: {resetStyle}{amountOfTokenOutEther}")
         print(f"{redBright}Amount of tokens out min: {resetStyle}{self.w3.fromWei(amountOutMin, 'ether')}")
 
         return amountOutMin
+    # def calculateMinAmountOfTokens(self):    
+    #     # Figure out amount of tokens
+    #     while True:
+    #         time.sleep(0.15)
+    #         try:
+    #             amountsOut = self.contract.functions.getAmountsOut(self.amountInWei, [self.native_token_ca, self.token_to_buy]).call()
+    #             break
+    #         except:
+    #             print("got this stupid error again !!!!!!!!!!!!!!!!!!")
+            
+    #         amountOfTokenOutEther = self.w3.fromWei(amountsOut[1], 'ether')
+    #         amountOutMin = int(amountsOut[1] - (amountsOut[1] * self.slippage))
+
+    #         print(f"{blueBright}Amount of tokens out: {resetStyle}{amountOfTokenOutEther}")
+    #         print(f"{redBright}Amount of tokens out min: {resetStyle}{self.w3.fromWei(amountOutMin, 'ether')}")
+
+    #     return amountOutMin
 
     def setUpGasPrice(self):
         """Dispaly user current gasPrice and gasLimit and ask if they want to pay approximate fees"""

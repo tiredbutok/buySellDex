@@ -82,6 +82,7 @@ def main():
         chain, w3, amountInWei, contract, token_to_buy,
         native_token_ca, slippage, SENDER_ADDRESS, fastGasPrice
     )
+    print(txn_object)
     
     # Build transaction
     readyTransaction = txn_object.txn.buildTransaction({
