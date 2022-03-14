@@ -17,11 +17,8 @@ SENDER_ADDRESS = os.getenv('SENDER_ADDRESS')
 
 # For web3
 from web3 import Web3
-from web3.middleware import geth_poa_middleware
 from web3.gas_strategies.rpc import rpc_gas_price_strategy
 from config import chains
-
-native_token_symbol = ''
 
 def main():        
     # Get chain info
@@ -60,7 +57,7 @@ def main():
     print(greenBright, "BALANCE:", str(readable_balance), resetStyle, chain['NATIVE_TOKEN_SYMBOL'],"\n")
 
     # Set amount of native token for txn
-    amountInMessage = f"{blueBright}Amount of {native_token_symbol} in: {resetStyle}"
+    amountInMessage = f"{blueBright}Amount of {chain['NATIVE_TOKEN_SYMBOL']} in: {resetStyle}"
     amountInInput = input(amountInMessage)
     amountInWei = w3.toWei(amountInInput, 'ether')
 
@@ -82,7 +79,6 @@ def main():
         chain, w3, amountInWei, contract, token_to_buy,
         native_token_ca, slippage, SENDER_ADDRESS, fastGasPrice
     )
-    print(txn_object)
     
     # Build transaction
     readyTransaction = txn_object.txn.buildTransaction({
@@ -97,12 +93,13 @@ def main():
     signed_txn = w3.eth.account.sign_transaction(readyTransaction, private_key=PRIVATE_KEY)
     txn_send = w3.eth.send_raw_transaction(signed_txn.rawTransaction)
     tx_hash = w3.toHex(txn_send)
+
+    # txn link to blockscan
     print(f"{chain['SCAN_URL']}{tx_hash}")
 
 
 def pickChain():
     """Return chain object that consists of NATIVE_TOKEN_SYMBOL, WRAPPED_NATIVE_TOKEN_CA, RPC etc."""
-    global native_token_symbol
     try:
         chainSymbol = sys.argv[1].lower()
         chain = chains[chainSymbol]
@@ -115,17 +112,18 @@ def pickChain():
         print("-------------------------------")
         sys.exit(1)
     print(f"{redBright}PICKED CHAIN:{resetStyle} {chainSymbol}")
-    native_token_symbol = chain["NATIVE_TOKEN_SYMBOL"]
     return chain
         
 def setSlippage():
     """Set slippage"""
     slippageMessage = f"{blueBright}Set slippage between 0.01 - 1: {resetStyle}"
     slippageInput = float(input(slippageMessage))
+
     if slippageInput < 0.01:
         slippageInput = 0.01
     elif slippageInput > 1:
         slippageInput = 1
+    
     print(f"{redBright}\n|=========| Slippage set to {slippageInput*100}%! |=========|{resetStyle}\n")
     return slippageInput
     

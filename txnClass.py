@@ -34,6 +34,7 @@ class Txn:
             sender_address:{self.sender_address}"
 
     def createTransaction(self):
+        """Creates transaction"""
         while True:
             # Rn have no idea how to listen for liquidity added event usint web3 py
             time.sleep(0.25)
@@ -58,7 +59,8 @@ class Txn:
             deadline
         )
 
-    def calculateMinAmountOfTokens(self):    
+    def calculateMinAmountOfTokens(self): 
+        """Returns minimum amount of tokens to get from swap"""   
         # Figure out amount of tokens
         amountsOut = self.contract.functions.getAmountsOut(self.amountInWei, [self.native_token_ca, self.token_to_buy]).call()
             
@@ -69,26 +71,9 @@ class Txn:
         print(f"{redBright}Amount of tokens out min: {resetStyle}{self.w3.fromWei(amountOutMin, 'ether')}")
 
         return amountOutMin
-    # def calculateMinAmountOfTokens(self):    
-    #     # Figure out amount of tokens
-    #     while True:
-    #         time.sleep(0.15)
-    #         try:
-    #             amountsOut = self.contract.functions.getAmountsOut(self.amountInWei, [self.native_token_ca, self.token_to_buy]).call()
-    #             break
-    #         except:
-    #             print("got this stupid error again !!!!!!!!!!!!!!!!!!")
-            
-    #         amountOfTokenOutEther = self.w3.fromWei(amountsOut[1], 'ether')
-    #         amountOutMin = int(amountsOut[1] - (amountsOut[1] * self.slippage))
-
-    #         print(f"{blueBright}Amount of tokens out: {resetStyle}{amountOfTokenOutEther}")
-    #         print(f"{redBright}Amount of tokens out min: {resetStyle}{self.w3.fromWei(amountOutMin, 'ether')}")
-
-    #     return amountOutMin
 
     def setUpGasPrice(self):
-        """Dispaly user current gasPrice and gasLimit and ask if they want to pay approximate fees"""
+        """Dispaly to user current gasPrice and gasLimit and ask if they want to pay approximate fees"""
 
         print("\n|===|GAS LIMIT:", blueBright, self._gasLimit, resetStyle)
 
@@ -114,15 +99,3 @@ class Txn:
             if askForGasPrice == "n":
                 gasPriceUser = input("\n|===|YOUR GAS PRICE (gwei): ")
                 self._gasPrice = self.w3.toWei(gasPriceUser, 'gwei')
-
-    # @property
-    # def gasPrice(self):
-    #     return self.gasPrice
-    
-    # @gasPrice.getter
-    # def gasPrice(self):
-    #     return self._gasPrice
-    
-    # @gasPrice.setter
-    # def gasPrice(self, newGasPrice):
-    #     self._gasPrice = newGasPrice
