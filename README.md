@@ -1,9 +1,9 @@
 ## Description
-It's my attempt at creating very basic program to buy/sell tokens faster by using web3.py and availible router contracts instead of frontend AMM which often prove to be laggy. It's not to say that it guarantees that you will not get rekt... It's not a mempool bot or anything of the sorts. It just makes purchase faster by avoiding slow UI. Right now it supports only BUYING, so you still have to sell them using UI :|. Supported chains as of now are bsc, fantom and ropsten test network. You can add appropriate data to config.py file, most of EVM chains should work but some of dexes use different function names eg. Trader Joe on AVAX.  
+It's my attempt at creating very basic program to buy/sell tokens faster by using web3.py and availible router contracts instead of frontend AMM which often prove to be laggy. It's not to say that it guarantees that you will not get rekt trading with it... It's not a mempool bot or anything of the sorts. It just makes purchase faster by avoiding slow UI. Right now it supports only BUYING, so you still have to sell them using UI :|. Supported chains as of now are bsc, fantom and ropsten test network. You can add appropriate data to config.py file, most of EVM chains should work but some of dexes use different function names eg. Trader Joe on AVAX.  
 THE PURPOSE FOR THIS PROGRAM IS FOR ME TO LEARN NOT TO MAKE MONEY SO BE CAREFUL WHILE USING IT !!!!!
 ## Setup
 ### ENVIRONMENTAL VARIABLES
-This program requires you to setup some environmental variables in order for you to use it. <font color="red">main.py</font> needs to know your <font color="green">PRIVATE_KEY</font> and <font color="green">SENDER_ADDRESS</font>, <font color="red">config.py</font> needs to know your <font color="green">ROPSTEN_RPC</font> api key eg. from INFURA.
+This program requires you to setup some environmental variables in order for you to use it. <font color="red">main.py</font> needs to know your <font color="green">PRIVATE_KEY</font> and <font color="green">SENDER_ADDRESS</font>, <font color="red">config.py</font> needs to know your <font color="green">ROPSTEN_RPC</font> api key eg. from INFURA. Create .env file and add the above variables.
 ### Virtual Env
 It's best to create virtual env instead of istalling dependencies globally.  
 Create python venv:
