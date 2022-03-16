@@ -45,6 +45,8 @@ def main():
     if "-f" in opts:
         fastGasPrice = input("|===|YOUR GAS PRICE (gwei): ")
         fastGasPrice = w3.toWei(fastGasPrice, 'gwei')
+    if "-s" in opts:
+        print("sell")
 
     # Check if provided address is a valid address
     if not w3.isAddress(SENDER_ADDRESS):
