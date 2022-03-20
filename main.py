@@ -1,5 +1,6 @@
 import time
 import sys
+import re
 
 # For creating txn object
 from txnClass import Txn
@@ -20,7 +21,21 @@ from web3 import Web3
 from web3.gas_strategies.rpc import rpc_gas_price_strategy
 from config import chains
 
-def main():        
+args_pattern = re.compile(
+    r"""
+    ^
+    (
+        (\w+\s+)?
+        ((?:-l|--liquidity)\s(?P<LIQ>.*?)\s)?
+    )
+    $
+""",
+    re.VERBOSE,
+)
+
+def main():
+    # arg_line = " ".join(sys.argv[1:])
+    # a = parse(arg_line)
     # Get chain info
     chain = pickChain()
     
@@ -102,15 +117,17 @@ def main():
 
 def pickChain():
     """Return chain object that consists of NATIVE_TOKEN_SYMBOL, WRAPPED_NATIVE_TOKEN_CA, RPC etc."""
+    chainNames = [i for i in chains]
     try:
         chainSymbol = sys.argv[1].lower()
         chain = chains[chainSymbol]
     except (IndexError, KeyError) as e:
         print("ERROR:")
-        print(f"{cyanBright}{' ':6}|=====|Usage|=====|{resetStyle}")
+        print(f"{cyanBright}|=====|Usage|=====|{resetStyle}")
         print("-------------------------------")
-        print(f"python3 main.py {yelloBright}<chain_symbol>{resetStyle}")
-        print(f"{yelloBright}<chain_symbol>{resetStyle}: bsc, ftm, ropsten")
+        print(f"python3 main.py {yelloBright}<chain_symbol>{resetStyle} {greenBright}[-f]{resetStyle}")
+        print(f"{yelloBright}<chain_symbol>{resetStyle}: {', '.join(chainNames)}")
+        print(f"{greenBright}[-f]{resetStyle}: fast buy option, specify gas at the beginning")
         print("-------------------------------")
         sys.exit(1)
     print(f"{redBright}PICKED CHAIN:{resetStyle} {chainSymbol}")
@@ -129,5 +146,16 @@ def setSlippage():
     print(f"{redBright}\n|=========| Slippage set to {slippageInput*100}%! |=========|{resetStyle}\n")
     return slippageInput
     
+def parse(arg_line):
+    args = {}
+    print("arg_line:", arg_line)
+    match_object = args_pattern.match(arg_line)
+    print("MATCH OBJ:", match_object)
+    if match_object:
+        print("match_object: ", match_object)
+        args = {k: v for k, v in match_object.groupdict().items()
+                if v is not None}
+    return args
+
 if __name__ == '__main__':
     main()
